@@ -531,11 +531,11 @@ def insert_vm2000(
         name = pv.name.replace("_pv", "")
         # The idea is to have the entire interface between water and VM2000 transparent.
         # VM2000 -> water
-        g4.BorderSurface(name + "_water_border_surface", pv, water_pv, surfaces.vm2000_to_water, reg)
+        g4.BorderSurface(name + "_water_border_surface", pv, water_pv, surfaces.vm2000_water_border, reg)
         # water -> VM2000
-        g4.BorderSurface("water_" + name + "_border_surface", water_pv, pv, surfaces.vm2000_to_water, reg)
+        g4.BorderSurface("water_" + name + "_border_surface", water_pv, pv, surfaces.vm2000_water_border, reg)
         # Then the reflection happens at the back of the VM2000 and the WLS happens during transport through the VM2000.
-        g4.SkinSurface(name + "_skin_surface", pv.logicalVolume, surfaces.to_vm2000, reg)
+        g4.SkinSurface(name + "_skin_surface", pv.logicalVolume, surfaces.vm2000_reflective_skin, reg)
 
     _vm2000_surfaces(pillbox_outer_reflection_foil_tube_pv)
     _vm2000_surfaces(pillbox_inner_reflection_foil_tube_pv)
