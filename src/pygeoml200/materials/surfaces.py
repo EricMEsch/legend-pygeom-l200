@@ -188,7 +188,7 @@ class OpticalSurfaceRegistry:
             name="water_tank_foil_surface",
             finish="polished",
             model="unified",
-            surf_type="dielectric_metal",
+            surf_type="dielectric_dielectric",
             value=0.3,
             registry=self.g4_registry,
         )
