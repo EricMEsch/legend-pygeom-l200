@@ -188,13 +188,12 @@ class OpticalSurfaceRegistry:
             name="water_tank_foil_surface",
             finish="polished",
             model="unified",
-            surf_type="dielectric_dielectric",
+            surf_type="dielectric_metal",
             value=0.3,
             registry=self.g4_registry,
         )
 
         pygeomoptics.vm2000.pyg4_vm2000_attach_reflectivity(_to_vm2000, self.g4_registry)
-        pygeomoptics.vm2000.pyg4_vm2000_attach_efficiency(_to_vm2000, self.g4_registry)
 
         return _to_vm2000
 
@@ -205,7 +204,7 @@ class OpticalSurfaceRegistry:
             name="WaterTankFoilBorder",
             finish="polished",
             model="unified",
-            surf_type="dielectric_metal",
+            surf_type="dielectric_dielectric",
             value=0.3,
             registry=self.g4_registry,
         )
