@@ -1211,8 +1211,7 @@ def create_fiber_support_outer(b: core.InstrumentationData, z_pos: float) -> g4.
         )
         vols.append(curvedfin)
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+        with warnings.catch_warnings(action="ignore"):
             curvedfin_tra = Rotation.from_euler("YZ", [-np.pi / 2, fin_angle_tra]).as_euler("xyz")
         tras.append(
             [
