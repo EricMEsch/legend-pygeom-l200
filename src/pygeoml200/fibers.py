@@ -4,7 +4,7 @@ import itertools
 import math
 import warnings
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from dbetto import TextDB
@@ -44,7 +44,7 @@ def place_fiber_modules(
             )
             modules[ch.location.fiber] = mod
 
-        assert getattr(mod, f"channel_{ch.location.position}_name") is None
+        assert not hasattr(mod, f"channel_{ch.location.position}_name")
         setattr(mod, f"channel_{ch.location.position}_name", ch.name)
         setattr(mod, f"channel_{ch.location.position}_rawid", ch.daq.rawid)
 
@@ -120,10 +120,11 @@ class FiberModuleData:
     barrel: str
     name: str
     tpb_thickness: float
-    channel_top_name: str = None  # type: ignore[assignment]
-    channel_bottom_name: str = None  # type: ignore[assignment]
-    channel_top_rawid: int = None  # type: ignore[assignment]
-    channel_bottom_rawid: int = None  # type: ignore[assignment]
+    # the channel fields filled in later from the channel map. Accessing them before that raises AttributeError.
+    channel_top_name: str = field(init=False)
+    channel_bottom_name: str = field(init=False)
+    channel_top_rawid: int = field(init=False)
+    channel_bottom_rawid: int = field(init=False)
 
 
 class ModuleFactoryBase(ABC):
