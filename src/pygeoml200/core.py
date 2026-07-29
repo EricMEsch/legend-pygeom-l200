@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import contextlib
 import logging
+from dataclasses import dataclass
 from importlib import resources
-from typing import NamedTuple
 
 from dbetto import AttrsDict, TextDB
 from git import GitCommandError
@@ -25,7 +25,8 @@ DEFINED_ASSEMBLIES = DEFAULT_ASSEMBLIES | {"watertank"}
 DEFAULT_METADATA_TIMESTAMP = "20230311T235840Z"
 
 
-class InstrumentationData(NamedTuple):
+@dataclass(frozen=True, slots=True, kw_only=True)
+class InstrumentationData:
     mother_lv: geant4.LogicalVolume
     """Argon LogicalVolume instance in which all components are to be placed."""
     mother_pv: geant4.PhysicalVolume
@@ -148,7 +149,14 @@ def construct(
         lambda: lmeta.channelmap(timestamp) if lmeta is not None else dummy_geom.chmap,
     )
     instr = InstrumentationData(
-        lar_lv, lar_pv, mats, reg, channelmap, special_metadata, AttrsDict(config), top_plate_z_pos
+        mother_lv=lar_lv,
+        mother_pv=lar_pv,
+        materials=mats,
+        registry=reg,
+        channelmap=channelmap,
+        special_metadata=special_metadata,
+        runtime_config=AttrsDict(config),
+        top_plate_z_pos=top_plate_z_pos,
     )
 
     # Place all instrumentation into the liquid argon
