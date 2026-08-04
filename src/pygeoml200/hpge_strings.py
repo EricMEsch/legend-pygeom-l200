@@ -487,7 +487,6 @@ def _place_hpge_string(
         nms = _get_nylon_mini_shroud(
             string_meta.minishroud_radius_in_mm,
             minishroud_length,
-            True,
             b.materials,
             b.registry,
             minishroud_name="minishroud_tube",
@@ -505,7 +504,6 @@ def _place_hpge_string(
         nms_top = _get_nylon_mini_shroud(
             string_meta.minishroud_radius_in_mm - MINISHROUD_END_THICKNESS,
             MINISHROUD_LENGTH[1],
-            True,
             b.materials,
             b.registry,
             min_radius=10,
@@ -699,7 +697,6 @@ def _get_support_structure(
 def _get_nylon_mini_shroud(
     radius: int,
     length: int,
-    top_open: bool,
     materials: materials.OpticalMaterialRegistry,
     registry: geant4.Registry,
     min_radius: int = 0,
@@ -709,7 +706,6 @@ def _get_nylon_mini_shroud(
 
     .. note:: this can also be used for calibration tubes.
     """
-    assert top_open  # just for b/c of this shared interface. remove in future.
     shroud_name = f"{minishroud_name}_{radius:.2f}x{length:.2f}"
     if shroud_name not in registry.logicalVolumeDict:
         outer = geant4.solid.Tubs(f"{shroud_name}_outer", min_radius, radius, length, 0, 2 * np.pi, registry)
@@ -717,14 +713,13 @@ def _get_nylon_mini_shroud(
             f"{shroud_name}_inner",
             0,
             radius - MINISHROUD_THICKNESS,
-            # at the top/bottom, the NMS has essentially two layers.
-            length - (0 if top_open else 2 * MINISHROUD_END_THICKNESS),
+            length,
             0,
             2 * np.pi,
             registry,
         )
         # subtract the slightly smaller solid from the larger one, to get a hollow and closed volume.
-        inner_z = (1 if top_open else 0) * MINISHROUD_END_THICKNESS
+        inner_z = MINISHROUD_END_THICKNESS
         shroud = geant4.solid.Subtraction(shroud_name, outer, inner, [[0, 0, 0], [0, 0, inner_z]], registry)
         nms_lv = geant4.LogicalVolume(shroud, materials.tpb_on_nylon, shroud_name, registry)
         nms_lv.pygeom_color_rgba = (0.55, 0.79, 0.97, 0.1)

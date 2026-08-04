@@ -61,7 +61,7 @@ def place_calibration_system(b: core.InstrumentationData) -> None:
 
         if tube.length_in_mm not in calib_tubes:
             calib_tubes[tube.length_in_mm] = hpge_strings._get_nylon_mini_shroud(
-                tube.tube_radius_in_mm, tube.length_in_mm, True, b.materials, b.registry
+                tube.tube_radius_in_mm, tube.length_in_mm, b.materials, b.registry
             )
 
         # allow for an offset to place properly the sis
