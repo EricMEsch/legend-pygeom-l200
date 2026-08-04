@@ -190,6 +190,13 @@ def _assign_common_copper_surface(b: InstrumentationData) -> None:
     surf = None
     cu_mat = b.materials.metal_copper
 
+    # collect all existing border surfaces once, so that the check below stays O(1) per part.
+    existing_borders = {
+        (s.physref1, s.physref2)
+        for s in b.registry.surfaceDict.values()
+        if isinstance(s, geant4.BorderSurface)
+    }
+
     for pv in b.registry.physicalVolumeDict.values():
         if (
             pv.motherVolume != b.mother_lv
@@ -203,10 +210,7 @@ def _assign_common_copper_surface(b: InstrumentationData) -> None:
             surf = b.materials.surfaces.to_copper
 
         # check that we do not have another surface already at this boundary.
-        if any(
-            isinstance(s, geant4.BorderSurface) and b.mother_pv == s.physref1 and pv == s.physref2
-            for s in b.registry.surfaceDict.values()
-        ):
+        if (b.mother_pv, pv) in existing_borders:
             continue
 
         geant4.BorderSurface("bsurface_lar_cu_" + pv.name, b.mother_pv, pv, surf, b.registry)
