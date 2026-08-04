@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import contextlib
 import logging
 from dataclasses import dataclass
 from importlib import resources
 
 from dbetto import AttrsDict, TextDB
-from git import GitCommandError
-from legendmeta import LegendMetadata
 from pyg4ometry import geant4
 from pygeomtools.utils import load_dict_from_config
 
 from . import calibration, cryo, fibers, hpge_strings, materials, top, watertank, wlsr
-from .metadata import PublicMetadataProxy
+from .metadata import resolve_metadata
 
 log = logging.getLogger(__name__)
 
@@ -20,9 +17,6 @@ configs = TextDB(resources.files("pygeoml200") / "configs" / "extra_meta")
 
 DEFAULT_ASSEMBLIES = {"wlsr", "strings", "calibration", "fibers", "top"}
 DEFINED_ASSEMBLIES = DEFAULT_ASSEMBLIES | {"watertank"}
-
-# default metadata timestamp used to select the channel map and special-geometry metadata.
-DEFAULT_METADATA_TIMESTAMP = "20230311T235840Z"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -60,20 +54,13 @@ def construct(
         msg = "invalid geometrical assembly specified"
         raise ValueError(msg)
 
-    lmeta = None
-    if not public_geometry:
-        with contextlib.suppress(GitCommandError):
-            lmeta = LegendMetadata(lazy=True)
-    # require user action to construct a testdata-only geometry (i.e. to avoid accidental creation of "wrong"
-    # geometries by LEGEND members).
-    if lmeta is None and not public_geometry:
-        msg = "cannot construct geometry from public testdata only, if not explicitly instructed"
-        raise RuntimeError(msg)
-    if lmeta is None:
-        log.warning("CONSTRUCTING GEOMETRY FROM PUBLIC DATA ONLY")
-        dummy_geom = PublicMetadataProxy()
-
     config = config if config is not None else {}
+
+    meta = resolve_metadata(
+        config,
+        public_geometry,
+        "cannot construct geometry from public testdata only, if not explicitly instructed",
+    )
 
     reg = geant4.Registry()
     mats = materials.OpticalMaterialRegistry(reg)
@@ -135,25 +122,15 @@ def construct(
         "displacement from cryostat center (positive to top): %f mm", top_plate_z_pos - array_total_height / 2
     )
 
-    timestamp = config.get("metadata_timestamp", DEFAULT_METADATA_TIMESTAMP)
-    if lmeta is None and "metadata_timestamp" in config:
-        msg = "metadata_timestamp cannot be specified for public dummy geometry"
-        raise ValueError(msg)
-    special_metadata = load_dict_from_config(config, "special_metadata", lambda: configs.on(timestamp))
-    if lmeta is None:
-        special_metadata = dummy_geom.update_special_metadata(special_metadata)
+    special_metadata = load_dict_from_config(config, "special_metadata", lambda: configs.on(meta.timestamp))
+    special_metadata = meta.update_special_metadata(special_metadata)
 
-    channelmap = load_dict_from_config(
-        config,
-        "channelmap",
-        lambda: lmeta.channelmap(timestamp) if lmeta is not None else dummy_geom.chmap,
-    )
     instr = InstrumentationData(
         mother_lv=lar_lv,
         mother_pv=lar_pv,
         materials=mats,
         registry=reg,
-        channelmap=channelmap,
+        channelmap=meta.channelmap,
         special_metadata=special_metadata,
         runtime_config=AttrsDict(config),
         top_plate_z_pos=top_plate_z_pos,
@@ -166,15 +143,13 @@ def construct(
         wlsr.place_wlsr(instr, lar_neck_height - 1247.41)
 
     if "strings" in assemblies:
-        hw_meta = lmeta.hardware.detectors.germanium.diodes if lmeta is not None else dummy_geom.diodes
-        hpge_strings.place_hpge_strings(hw_meta, instr)
+        hpge_strings.place_hpge_strings(meta.diodes, instr)
     if "calibration" in assemblies:
         calibration.place_calibration_system(instr)
     if "top" in assemblies:
         top.place_top_plate(instr)
     if "fibers" in assemblies:
-        hw_meta = lmeta.hardware.detectors.lar.fibers if lmeta is not None else dummy_geom.fibers
-        fibers.place_fiber_modules(hw_meta, instr, use_detailed_fiber_model)
+        fibers.place_fiber_modules(meta.fibers, instr, use_detailed_fiber_model)
 
     _assign_common_copper_surface(instr)
 

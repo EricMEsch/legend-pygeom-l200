@@ -13,6 +13,7 @@ from pygeomtools import RemageDetectorInfo
 from scipy.spatial.transform import Rotation
 
 from . import core, materials
+from .metadata import fixup_enrichment
 from .utils import _read_model
 
 log = logging.getLogger(__name__)
@@ -33,10 +34,7 @@ def place_hpge_strings(hpge_metadata: TextDB, b: core.InstrumentationData) -> No
         assert hpge_meta.name == ch_meta.name
         full_meta = copy.deepcopy(ch_meta | hpge_meta)
 
-        # Temporary fix for gedet with null enrichment value
-        if hpge_meta.production.enrichment.val is None:
-            log.warning("%s has no enrichment in metadata - setting to dummy value 0.9!", hpge_meta.name)
-            full_meta.production.enrichment = 0.9
+        fixup_enrichment(full_meta, hpge_meta.name)
 
         hpge_string_id = ch_meta.location.string
         hpge_unit_id_in_string = ch_meta.location.position
