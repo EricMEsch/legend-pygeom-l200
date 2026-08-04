@@ -1113,13 +1113,24 @@ class ModuleFactorySegment(ModuleFactoryBase):
             )
 
 
+def _support_lv(b: core.InstrumentationData, solid: g4.solid.SolidBase, name: str) -> g4.LogicalVolume:
+    """Get the (cached) copper logical volume named ``name`` for the given fiber support solid."""
+    if name in b.registry.logicalVolumeDict:
+        return b.registry.logicalVolumeDict[name]
+
+    vol_lv = g4.LogicalVolume(solid, b.materials.metal_copper, name, b.registry)
+    vol_lv.pygeom_color_rgba = (0.72, 0.45, 0.2, 1)
+    return vol_lv
+
+
 def create_fiber_support_inner(b: core.InstrumentationData, z_pos: float) -> g4.LogicalVolume:
     inner_radius = 127.5  # mm, from CAD model.
     outer_radius = inner_radius + 6.5  # mm
     ring_thickness = 3  # mm
     rod_radius = 2.5  # mm
 
-    vols = []
+    # each entry is the solid to place and the name of its (shared) logical volume.
+    vols: list[tuple[g4.solid.SolidBase, str]] = []
     tras: list[tuple[float, list[float]]] = []
 
     # Create the rings
@@ -1128,7 +1139,7 @@ def create_fiber_support_inner(b: core.InstrumentationData, z_pos: float) -> g4.
     )
     z_ring = (-700, -600, -300, 0, 300, 600, 700)  # mm
     for z in z_ring:
-        vols.append(ring)
+        vols.append((ring, "larinstr_support_inner_copper_ring"))
         tras.append((0, [0, 0, z]))
 
     # Create the rods
@@ -1144,21 +1155,15 @@ def create_fiber_support_inner(b: core.InstrumentationData, z_pos: float) -> g4.
                 )
             rod = b.registry.solidDict[rod_name]
 
-            vols.append(rod)
+            vols.append((rod, f"larinstr_support_inner_copper_rod_{rod_length}"))
             phi = i * 2 * np.pi / 3
             tras.append((0, [radius_rod * np.cos(phi), radius_rod * np.sin(phi), rings[0] + rod_length / 2]))
             rl += rod_length
         assert rl == 1400
 
     # Combine rings and rods
-    for idx, (vol, tra) in enumerate(zip(vols, tras, strict=True)):
-        vol_lv = g4.LogicalVolume(
-            vol,
-            b.materials.metal_copper,
-            f"larinstr_support_inner_copper_{idx}",
-            b.registry,
-        )
-        vol_lv.pygeom_color_rgba = (0.72, 0.45, 0.2, 1)
+    for idx, ((vol, lv_name), tra) in enumerate(zip(vols, tras, strict=True)):
+        vol_lv = _support_lv(b, vol, lv_name)
 
         g4.PhysicalVolume(
             [0, 0, -tra[0]],
@@ -1171,7 +1176,8 @@ def create_fiber_support_inner(b: core.InstrumentationData, z_pos: float) -> g4.
 
 
 def create_fiber_support_outer(b: core.InstrumentationData, z_pos: float) -> g4.LogicalVolume:
-    vols = []
+    # each entry is the solid to place and the name of its (shared) logical volume.
+    vols: list[tuple[g4.solid.SolidBase, str]] = []
     tras = []
 
     radius = 283 + 2  # mm. in CAD model 283 mm, enlarged to avoid fiber overlaps.
@@ -1203,14 +1209,14 @@ def create_fiber_support_outer(b: core.InstrumentationData, z_pos: float) -> g4.
         # Each fin needs to be rotated by 18 degrees to make the curved portion radial.
         fin_angle = i * 2 * np.pi / 20
         fin_angle_tra = -fin_angle + np.pi / 2
-        vols.append(fin)
+        vols.append((fin, "larinstr_support_outer_copper_fin"))
         tras.append(
             [
                 [0, 0, fin_angle_tra],
                 [radius_fins * np.cos(fin_angle), radius_fins * np.sin(fin_angle), fin_z],
             ]
         )
-        vols.append(curvedfin)
+        vols.append((curvedfin, "larinstr_support_outer_copper_fin_curved"))
 
         with warnings.catch_warnings(action="ignore"):
             curvedfin_tra = Rotation.from_euler("YZ", [-np.pi / 2, fin_angle_tra]).as_euler("xyz")
@@ -1229,10 +1235,14 @@ def create_fiber_support_outer(b: core.InstrumentationData, z_pos: float) -> g4.
     rings_z = [-600, -450, -300, 0, 300, 600, 700]
     rings_thickness = [2, 2, 2, 2, 2, 2, 3]
     for z, thickness in zip(rings_z, rings_thickness, strict=True):
-        vols.append(thinring if thickness == 2 else topring)
+        vols.append(
+            (thinring, "larinstr_support_outer_copper_ring")
+            if thickness == 2
+            else (topring, "larinstr_support_outer_copper_topring")
+        )
         tras.append([[0, 0, 0], [0, 0, z]])
 
-    vols.append(bottomring)
+    vols.append((bottomring, "larinstr_support_outer_copper_bottomring"))
     tras.append([[0, 0, 0], [0, 0, -600 - fin_radius - 10]])
 
     # add the three support rods.
@@ -1247,7 +1257,7 @@ def create_fiber_support_outer(b: core.InstrumentationData, z_pos: float) -> g4.
                 g4.solid.Tubs(rod_name, 0, 2.5, rod_length - rod_delta - 2e-9, 0, 2 * np.pi, b.registry)
             rod = b.registry.solidDict[rod_name]
 
-            vols.append(rod)
+            vols.append((rod, f"larinstr_support_outer_copper_rod_{rod_length}"))
             phi = i * 2 * np.pi / 4
             tras.append(
                 [
@@ -1259,14 +1269,8 @@ def create_fiber_support_outer(b: core.InstrumentationData, z_pos: float) -> g4.
         assert rl == 1300
 
     # Combine rings and rods
-    for idx, (vol, tra) in enumerate(zip(vols, tras, strict=True)):
-        vol_lv = g4.LogicalVolume(
-            vol,
-            b.materials.metal_copper,
-            f"larinstr_support_outer_copper_{idx}",
-            b.registry,
-        )
-        vol_lv.pygeom_color_rgba = (0.72, 0.45, 0.2, 1)
+    for idx, ((vol, lv_name), tra) in enumerate(zip(vols, tras, strict=True)):
+        vol_lv = _support_lv(b, vol, lv_name)
 
         g4.PhysicalVolume(
             tra[0],
