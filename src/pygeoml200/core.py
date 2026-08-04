@@ -163,7 +163,7 @@ def construct(
     if "wlsr" in assemblies:
         # height below the lower end of the neck (even though this intended dimension is quite certainly
         # not really met in reality, P. Krause estimates ~cm uncertainty).
-        wlsr.place_wlsr(instr, lar_neck_height - 1247.41, reg)
+        wlsr.place_wlsr(instr, lar_neck_height - 1247.41)
 
     if "strings" in assemblies:
         hw_meta = lmeta.hardware.detectors.germanium.diodes if lmeta is not None else dummy_geom.diodes

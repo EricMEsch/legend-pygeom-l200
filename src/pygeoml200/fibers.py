@@ -375,9 +375,6 @@ class ModuleFactorySingleFibers(ModuleFactoryBase):
             self.b.registry,
             "mm",
         )
-        self.sipm_lv_bend = g4.LogicalVolume(
-            self.sipm_bend, self.b.materials.metal_silicon, v_name, self.b.registry
-        )
 
         sipm_outer1 = g4.solid.Box(
             f"sipm_outer1{v_suffix}",

@@ -73,7 +73,6 @@ def _construct_wlsr(
 def place_wlsr(
     b: core.InstrumentationData,
     z_displacement: float,
-    reg: g4.Registry,
 ) -> tuple[g4.PhysicalVolume, ...]:
     wlsr_outer_lv, wlsr_ttx_lv, wlsr_tpb_lv = _construct_wlsr(b.materials, b.registry)
 
@@ -83,7 +82,7 @@ def place_wlsr(
         wlsr_outer_lv,
         "wlsr_copper",
         b.mother_lv,
-        reg,
+        b.registry,
     )
     wlsr_tpb_pv = g4.PhysicalVolume(
         [0, 0, 0],
@@ -91,9 +90,11 @@ def place_wlsr(
         wlsr_tpb_lv,
         "wlsr_tpb",
         b.mother_lv,
-        reg,
+        b.registry,
     )
-    wlsr_ttx_pv = g4.PhysicalVolume([0, 0, 0], [0, 0, 0], wlsr_ttx_lv, "wlsr_tetratex", wlsr_tpb_lv, reg)
+    wlsr_ttx_pv = g4.PhysicalVolume(
+        [0, 0, 0], [0, 0, 0], wlsr_ttx_lv, "wlsr_tetratex", wlsr_tpb_lv, b.registry
+    )
 
     wlsr_ttx_lv.pygeom_color_rgba = [1, 1, 1, 0.2]
     wlsr_tpb_lv.pygeom_color_rgba = False
