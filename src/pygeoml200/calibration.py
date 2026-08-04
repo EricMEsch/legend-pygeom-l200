@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Literal
+from dataclasses import dataclass
+from typing import Literal, cast
 
 import numpy as np
 from dbetto import AttrsDict
@@ -34,9 +35,9 @@ def place_calibration_system(b: core.InstrumentationData) -> None:
             source_cfg.get("name", ""),
             np.array(source_cfg.position_in_mm[0:2]),
             source_cfg.position_in_mm[2],
-            source_type=source_spec["type"],
-            cu_absorber=(cu_absorber_config if source_spec["has_cu"] else None),
-            bare=source_spec["bare"],
+            source_type=source_spec.type,
+            cu_absorber=(cu_absorber_config if source_spec.has_cu else None),
+            bare=source_spec.bare,
         )
 
     # place calibration tubes.
@@ -134,9 +135,9 @@ def place_calibration_system(b: core.InstrumentationData) -> None:
                 f"sis{i}_slot{slot}",
                 sis_xy,
                 pin_top + delta_z[slot] - source_inside_holder,
-                source_type=source_spec["type"],
-                cu_absorber=(cu_absorber_config if source_spec["has_cu"] else None),
-                bare=source_spec["bare"],
+                source_type=source_spec.type,
+                cu_absorber=(cu_absorber_config if source_spec.has_cu else None),
+                bare=source_spec.bare,
             )
 
 
@@ -439,12 +440,21 @@ def _sis_to_pygeoml200(sis_coord: float) -> float:
     return sis_coord - sis_top_plate
 
 
-def _parse_source_spec(source_spec: str) -> dict:
+@dataclass(frozen=True)
+class SourceSpec:
+    type: Literal["Th228", "Ra"]
+    has_cu: bool
+    bare: bool
+
+
+def _parse_source_spec(source_spec: str) -> SourceSpec:
     parts = source_spec.split("+")
-    if parts[0] not in ("Th228", "Ra"):
+    source_type = parts[0]
+    if source_type not in ("Th228", "Ra"):
         msg = f"Invalid source type {parts[0]} in source spec"
         raise ValueError(msg)
+    source_type = cast(Literal["Th228", "Ra"], source_type)
     if set(parts[1:]) - {"Cu", "_bare"} != set():
         msg = f"Unknown extra in source spec {parts[1:]}"
         raise ValueError(msg)
-    return {"type": parts[0], "has_cu": "Cu" in parts, "bare": "_bare" in parts}
+    return SourceSpec(type=source_type, has_cu="Cu" in parts, bare="_bare" in parts)

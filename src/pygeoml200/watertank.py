@@ -304,8 +304,7 @@ def construct_pillbox(reg: g4.Registry, pillbox_material: g4.Material | str) -> 
     combined_rotation = rot_y * rot_z * rot_x
 
     # rotation matrix in euler angle
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
+    with warnings.catch_warnings(action="ignore"):
         euler_angles = combined_rotation.as_euler("xyz", degrees=False)
     x_rot_global, y_rot_global, z_rot_global = euler_angles
 
@@ -889,8 +888,7 @@ def insert_pmts(
 
             combined_rotation = rot_y * rot_z * rot_x
 
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
+            with warnings.catch_warnings(action="ignore"):
                 euler_angles = combined_rotation.as_euler("xyz", degrees=False)
             x_rot_global, y_rot_global, z_rot_global = euler_angles
 

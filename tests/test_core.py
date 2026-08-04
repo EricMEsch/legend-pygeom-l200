@@ -141,10 +141,8 @@ def test_material_store_cli(change_dir, tmp_path):
 
 
 @pytest.fixture
-def change_dir(request):
-    os.chdir(request.fspath.dirname)
-    yield
-    os.chdir(request.config.invocation_params.dir)
+def change_dir(request, monkeypatch):
+    monkeypatch.chdir(request.path.parent)
 
 
 def test_special(change_dir, tmp_path):

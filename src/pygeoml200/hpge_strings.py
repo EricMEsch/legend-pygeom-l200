@@ -340,6 +340,17 @@ def _hpge_unit_get_z(bottom: float, det_unit: HPGeDetUnit) -> tuple[dict, dict]:
     return t, z
 
 
+# positions from center of detector to center of volume center, by baseplate type.
+# note for finding these values: the holes of the HV receptacle have 3 mm distance to the side,
+# 4 mm for signal receptacle.
+FE_INS_ORIGINS = {
+    "small": {"signal": 8.8, "hv": 32.35},
+    "medium": {"signal": 14.25, "hv": 37.5},
+    "large": {"signal": 14.25, "hv": 37.5},
+    "xlarge": {"signal": 17.3, "hv": 40.35},
+}
+
+
 def _place_hpge_unit(
     z_unit_bottom: float,
     det_unit: HPGeDetUnit,
@@ -411,15 +422,7 @@ def _place_hpge_unit(
             )
             _add_pen_surfaces(pen_pv, b.mother_pv, b.materials, b.registry)
 
-    # positions from center of detector to center of volume center
-    # note for finding these values: the holes of the HV receptacle have 3 mm distance to the side,
-    # 4 mm for signal receptacle.
-    if det_unit.baseplate == "small":
-        fe_ins_origins = {"signal": 8.8, "hv": 32.35}
-    elif det_unit.baseplate in {"medium", "large"}:
-        fe_ins_origins = {"signal": 14.25, "hv": 37.5}
-    elif det_unit.baseplate == "xlarge":
-        fe_ins_origins = {"signal": 17.3, "hv": 40.35}
+    fe_ins_origins = FE_INS_ORIGINS[det_unit.baseplate]
 
     _place_front_end_and_insulators(det_unit, string_info, b, z_pos, thicknesses, fe_ins_origins)
 
