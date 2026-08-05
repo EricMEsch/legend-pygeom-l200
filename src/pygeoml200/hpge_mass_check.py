@@ -1,18 +1,13 @@
 from __future__ import annotations
 
-import contextlib
 import copy
 import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
-from git import GitCommandError
-from legendmeta import LegendMetadata
 from pygeomhpges import make_hpge
-from pygeomtools.utils import load_dict_from_config
 
-from .core import DEFAULT_METADATA_TIMESTAMP
-from .metadata import PublicMetadataProxy
+from .metadata import fixup_enrichment, resolve_metadata
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -51,27 +46,15 @@ def plot_hpge_mass_comparison(
 
     config = config if config is not None else {}
 
-    lmeta = None
-    public = public_geometry or bool(config.get("public_geom", False))
-    if not public:
-        with contextlib.suppress(GitCommandError):
-            lmeta = LegendMetadata(lazy=True)
-        if lmeta is None:
-            msg = "real LEGEND metadata is required for the HPGe mass comparison but could not be loaded"
-            raise RuntimeError(msg)
-    if lmeta is None:
-        dummy_geom = PublicMetadataProxy()
-
-    timestamp = config.get("metadata_timestamp", DEFAULT_METADATA_TIMESTAMP)
-    channelmap = load_dict_from_config(
+    resolved = resolve_metadata(
         config,
-        "channelmap",
-        lambda: lmeta.channelmap(timestamp) if lmeta is not None else dummy_geom.chmap,
+        public_geometry or bool(config.get("public_geom", False)),
+        "real LEGEND metadata is required for the HPGe mass comparison but could not be loaded",
     )
-    diodes = lmeta.hardware.detectors.germanium.diodes if lmeta is not None else dummy_geom.diodes
+    diodes = resolved.diodes
 
     # only consider the germanium detectors actually built into the geometry, i.e. the geds channels.
-    geds = channelmap.map("system", unique=False).get("geds", {})
+    geds = resolved.channelmap.map("system", unique=False).get("geds", {})
     names = sorted(ch.name for ch in geds.values())
 
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
@@ -88,13 +71,8 @@ def plot_hpge_mass_comparison(
             log.warning("%s has no measured mass in metadata, skipping", name)
             continue
 
-        # some detectors miss the enrichment value: fall back to a dummy value. The metadata stores it
-        # either as a plain number or as a {"val": ..., "unc": ...} mapping.
-        enrichment = meta.production.get("enrichment")
-        enrichment_val = enrichment.val if hasattr(enrichment, "val") else enrichment
-        if enrichment_val is None:
-            log.warning("%s has no enrichment in metadata, setting to dummy value 0.92", name)
-            meta.production.enrichment = 0.92
+        # some detectors miss the enrichment value: fall back to the same dummy value the geometry uses.
+        fixup_enrichment(meta, name)
 
         hpge = make_hpge(meta, None, allow_cylindrical_asymmetry)
         sim_mass = hpge.mass.to("g").m

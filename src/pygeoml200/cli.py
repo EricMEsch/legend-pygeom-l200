@@ -203,9 +203,9 @@ def _parse_cli_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, 
         msg = f"invalid fiber module type {args.fiber_modules}"
         raise ValueError(msg)
 
-    if not args.visualize and args.filename == "":
+    if not args.visualize and args.filename is None:
         parser.error("no output file and no visualization specified")
-    if (args.vis_macro_file or args.det_macro_file) and args.filename == "":
+    if (args.vis_macro_file or args.det_macro_file) and args.filename is None:
         parser.error("writing macro file(s) without gdml file is not possible")
 
     return args, config
